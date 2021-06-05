@@ -18,6 +18,7 @@ package dax
 import (
 	"context"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"time"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
@@ -126,6 +127,26 @@ func (c *Config) mergeFrom(ac aws.Config) {
 	if ac.Region != nil {
 		c.Region = *ac.Region
 	}
+}
+
+func (c *Config) requestOptionsV2(read bool, ctx context.Context, optFns ...func(*dynamodb.Options)) (client.RequestOptions, context.CancelFunc, error) {
+	r := c.WriteRetries
+	if read {
+		r = c.ReadRetries
+	}
+	var cfn context.CancelFunc
+	if ctx == nil && c.RequestTimeout > 0 {
+		ctx, cfn = context.WithTimeout(aws.BackgroundContext(), c.RequestTimeout)
+	}
+	opt := client.RequestOptions{
+		LogLevel:   c.LogLevel,
+		Logger:     c.Logger,
+		MaxRetries: r,
+	}
+	if err := opt.MergeFromOptFns(ctx, optFns...); err != nil {
+		return client.RequestOptions{}, nil, err
+	}
+	return opt, cfn, nil
 }
 
 func (c *Config) requestOptions(read bool, ctx context.Context, opts ...request.Option) (client.RequestOptions, context.CancelFunc, error) {

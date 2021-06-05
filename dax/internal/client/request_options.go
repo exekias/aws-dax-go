@@ -16,6 +16,7 @@
 package client
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -49,6 +50,35 @@ func (o *RequestOptions) applyTo(r *request.Request) {
 			r.SetContext(o.Context)
 		}
 	}
+}
+
+func (o *RequestOptions) MergeFromOptFns(ctx aws.Context, optFns ...func(*dynamodb.Options)) error {
+	if len(optFns) == 0 {
+		if ctx != nil {
+			o.Context = ctx
+		}
+		return nil
+	}
+
+	opts := make([]request.Option, 0)
+	for _, optFn := range optFns {
+		f := func(o *request.Request)  {
+			opt := dynamodb.Options{}
+			optFn(&opt)
+		}
+		opts = append(opts, f)
+	}
+
+	// New request has to be created to avoid panics when setting fields
+	r := request.New(aws.Config{}, metadata.ClientInfo{}, request.Handlers{}, nil, &request.Operation{}, nil, nil)
+	r.ApplyOptions(opts...)
+	if err := o.mergeFromRequest(r, true); err != nil {
+		return err
+	}
+	if ctx != nil {
+		o.Context = ctx
+	}
+	return nil
 }
 
 func (o *RequestOptions) MergeFromRequestOptions(ctx aws.Context, opts ...request.Option) error {

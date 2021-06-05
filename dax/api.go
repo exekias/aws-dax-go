@@ -18,376 +18,165 @@ package dax
 import (
 	"context"
 	"errors"
+	"github.com/aws/aws-dax-go/dax/internal"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"io"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/request"
+	dynamov1 "github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-func (d *Dax) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
-	return d.PutItemWithContext(nil, input)
-}
+//func (d *Dax) PutItem(input *dynamodb.PutItemInput) (*dynamodb.PutItemOutput, error) {
+//	return d.PutItemWithContext(nil, input)
+//}
 
-func (d *Dax) PutItemWithContext(ctx context.Context, input *dynamodb.PutItemInput, opts ...request.Option) (*dynamodb.PutItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(false, ctx, opts...)
+func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, optFns...)
 	if err != nil {
 		return nil, err
 	}
 	if cfn != nil {
 		defer cfn()
 	}
-	return d.client.PutItemWithOptions(input, &dynamodb.PutItemOutput{}, o)
-}
 
-func (d *Dax) PutItemRequest(input *dynamodb.PutItemInput) (*request.Request, *dynamodb.PutItemOutput) {
-	op := &request.Operation{Name: client.OpPutItem}
-	if input == nil {
-		input = &dynamodb.PutItemInput{}
+	co := string(params.ConditionalOperator)
+	input := &dynamov1.PutItemInput{
+		ConditionExpression:         params.ConditionExpression,
+		ConditionalOperator:         &co,
+		Expected:                    internal.ConvertExpectedAttributeValueV2toV1Map(params.Expected),
+		ExpressionAttributeNames:    internal.ConvertToPointerMap(params.ExpressionAttributeNames),
+		ExpressionAttributeValues:   internal.ConvertAttributeValueV2toV1Map(params.ExpressionAttributeValues),
+		Item:                        internal.ConvertAttributeValueV2toV1Map(params.Item),
+		ReturnConsumedCapacity:      (*string)(&params.ReturnConsumedCapacity),
+		ReturnItemCollectionMetrics: (*string)(&params.ReturnItemCollectionMetrics),
+		ReturnValues:                (*string)(&params.ReturnValues),
+		TableName:                   params.TableName,
 	}
-	output := &dynamodb.PutItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
+
+	output, err := d.client.PutItemWithOptions(input, &dynamov1.PutItemOutput{}, o)
+
+	if err != nil {
+		return nil, err
+	}
+
+	out := &dynamodb.PutItemOutput{
+		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
+		ItemCollectionMetrics: internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics),
+	}
+
+	if output.ConsumedCapacity != nil {
+		out.ConsumedCapacity = internal.ConvertConsumedCapacity(output.ConsumedCapacity)
+	}
+	return out, nil
 }
 
-func (d *Dax) DeleteItem(input *dynamodb.DeleteItemInput) (*dynamodb.DeleteItemOutput, error) {
-	return d.DeleteItemWithContext(nil, input)
+func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...request.Option) (*dynamodb.DeleteItemOutput, error) {
+	return nil, d.unImpl()
 }
 
-func (d *Dax) DeleteItemWithContext(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...request.Option) (*dynamodb.DeleteItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(false, ctx, opts...)
+func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, opts ...request.Option) (*dynamodb.UpdateItemOutput, error) {
+	return nil, d.unImpl()
+}
+
+func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...request.Option) (*dynamodb.GetItemOutput, error) {
+	return nil, d.unImpl()
+}
+
+func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...request.Option) (*dynamodb.ScanOutput, error) {
+	return nil, d.unImpl()
+}
+
+func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, optFns...)
 	if err != nil {
 		return nil, err
 	}
 	if cfn != nil {
 		defer cfn()
 	}
-	return d.client.DeleteItemWithOptions(input, &dynamodb.DeleteItemOutput{}, o)
-}
 
-func (d *Dax) DeleteItemRequest(input *dynamodb.DeleteItemInput) (*request.Request, *dynamodb.DeleteItemOutput) {
-	op := &request.Operation{Name: client.OpDeleteItem}
-	if input == nil {
-		input = &dynamodb.DeleteItemInput{}
+	co := string(params.ConditionalOperator)
+	var limit *int64 = nil
+	if params.Limit != nil {
+		i := int64(*params.Limit)
+		limit = &i
 	}
-	output := &dynamodb.DeleteItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) UpdateItem(input *dynamodb.UpdateItemInput) (*dynamodb.UpdateItemOutput, error) {
-	return d.UpdateItemWithContext(nil, input)
-}
-
-func (d *Dax) UpdateItemWithContext(ctx context.Context, input *dynamodb.UpdateItemInput, opts ...request.Option) (*dynamodb.UpdateItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(false, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.UpdateItemWithOptions(input, &dynamodb.UpdateItemOutput{}, o)
-}
-
-func (d *Dax) UpdateItemRequest(input *dynamodb.UpdateItemInput) (*request.Request, *dynamodb.UpdateItemOutput) {
-	op := &request.Operation{Name: client.OpUpdateItem}
-	if input == nil {
-		input = &dynamodb.UpdateItemInput{}
-	}
-	output := &dynamodb.UpdateItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) GetItem(input *dynamodb.GetItemInput) (*dynamodb.GetItemOutput, error) {
-	return d.GetItemWithContext(nil, input)
-}
-
-func (d *Dax) GetItemWithContext(ctx context.Context, input *dynamodb.GetItemInput, opts ...request.Option) (*dynamodb.GetItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(true, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.GetItemWithOptions(input, &dynamodb.GetItemOutput{}, o)
-}
-
-func (d *Dax) GetItemRequest(input *dynamodb.GetItemInput) (*request.Request, *dynamodb.GetItemOutput) {
-	op := &request.Operation{Name: client.OpGetItem}
-	if input == nil {
-		input = &dynamodb.GetItemInput{}
-	}
-	output := &dynamodb.GetItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) Scan(input *dynamodb.ScanInput) (*dynamodb.ScanOutput, error) {
-	return d.ScanWithContext(nil, input)
-}
-
-func (d *Dax) ScanWithContext(ctx context.Context, input *dynamodb.ScanInput, opts ...request.Option) (*dynamodb.ScanOutput, error) {
-	o, cfn, err := d.config.requestOptions(true, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.ScanWithOptions(input, &dynamodb.ScanOutput{}, o)
-}
-
-func (d *Dax) ScanRequest(input *dynamodb.ScanInput) (*request.Request, *dynamodb.ScanOutput) {
-	op := &request.Operation{
-		Name: client.OpScan,
-		Paginator: &request.Paginator{
-			InputTokens:     []string{"ExclusiveStartKey"},
-			OutputTokens:    []string{"LastEvaluatedKey"},
-			LimitToken:      "Limit",
-			TruncationToken: "",
-		},
-	}
-	if input == nil {
-		input = &dynamodb.ScanInput{}
-	}
-	output := &dynamodb.ScanOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) Query(input *dynamodb.QueryInput) (*dynamodb.QueryOutput, error) {
-	return d.QueryWithContext(nil, input)
-}
-
-func (d *Dax) QueryWithContext(ctx context.Context, input *dynamodb.QueryInput, opts ...request.Option) (*dynamodb.QueryOutput, error) {
-	o, cfn, err := d.config.requestOptions(true, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.QueryWithOptions(input, &dynamodb.QueryOutput{}, o)
-}
-
-func (d *Dax) QueryRequest(input *dynamodb.QueryInput) (*request.Request, *dynamodb.QueryOutput) {
-	op := &request.Operation{
-		Name: client.OpQuery,
-		Paginator: &request.Paginator{
-			InputTokens:     []string{"ExclusiveStartKey"},
-			OutputTokens:    []string{"LastEvaluatedKey"},
-			LimitToken:      "Limit",
-			TruncationToken: "",
-		},
-	}
-	if input == nil {
-		input = &dynamodb.QueryInput{}
-	}
-	output := &dynamodb.QueryOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) BatchWriteItem(input *dynamodb.BatchWriteItemInput) (*dynamodb.BatchWriteItemOutput, error) {
-	return d.BatchWriteItemWithContext(nil, input)
-}
-
-func (d *Dax) BatchWriteItemWithContext(ctx context.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (*dynamodb.BatchWriteItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(false, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.BatchWriteItemWithOptions(input, &dynamodb.BatchWriteItemOutput{}, o)
-}
-
-func (d *Dax) BatchWriteItemRequest(input *dynamodb.BatchWriteItemInput) (*request.Request, *dynamodb.BatchWriteItemOutput) {
-	op := &request.Operation{Name: client.OpBatchWriteItem}
-	if input == nil {
-		input = &dynamodb.BatchWriteItemInput{}
-	}
-	output := &dynamodb.BatchWriteItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) BatchGetItem(input *dynamodb.BatchGetItemInput) (*dynamodb.BatchGetItemOutput, error) {
-	return d.BatchGetItemWithContext(nil, input)
-}
-
-func (d *Dax) BatchGetItemWithContext(ctx context.Context, input *dynamodb.BatchGetItemInput, opts ...request.Option) (*dynamodb.BatchGetItemOutput, error) {
-	o, cfn, err := d.config.requestOptions(true, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.BatchGetItemWithOptions(input, &dynamodb.BatchGetItemOutput{}, o)
-}
-
-func (d *Dax) BatchGetItemRequest(input *dynamodb.BatchGetItemInput) (*request.Request, *dynamodb.BatchGetItemOutput) {
-	op := &request.Operation{
-		Name: client.OpBatchGetItem,
-		Paginator: &request.Paginator{
-			InputTokens:     []string{"RequestItems"},
-			OutputTokens:    []string{"UnprocessedKeys"},
-			LimitToken:      "",
-			TruncationToken: "",
-		},
-	}
-	if input == nil {
-		input = &dynamodb.BatchGetItemInput{}
-	}
-	output := &dynamodb.BatchGetItemOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) TransactWriteItems(input *dynamodb.TransactWriteItemsInput) (*dynamodb.TransactWriteItemsOutput, error) {
-	return d.TransactWriteItemsWithContext(nil, input)
-}
-
-func (d *Dax) TransactWriteItemsWithContext(ctx context.Context, input *dynamodb.TransactWriteItemsInput, opts ...request.Option) (*dynamodb.TransactWriteItemsOutput, error) {
-	o, cfn, err := d.config.requestOptions(false, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.TransactWriteItemsWithOptions(input, &dynamodb.TransactWriteItemsOutput{}, o)
-}
-
-func (d *Dax) TransactWriteItemsRequest(input *dynamodb.TransactWriteItemsInput) (*request.Request, *dynamodb.TransactWriteItemsOutput) {
-	op := &request.Operation{Name: client.OpTransactWriteItems}
-	if input == nil {
-		input = &dynamodb.TransactWriteItemsInput{}
-	}
-	output := &dynamodb.TransactWriteItemsOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) TransactGetItems(input *dynamodb.TransactGetItemsInput) (*dynamodb.TransactGetItemsOutput, error) {
-	return d.TransactGetItemsWithContext(nil, input)
-}
-
-func (d *Dax) TransactGetItemsWithContext(ctx context.Context, input *dynamodb.TransactGetItemsInput, opts ...request.Option) (*dynamodb.TransactGetItemsOutput, error) {
-	o, cfn, err := d.config.requestOptions(true, ctx, opts...)
-	if err != nil {
-		return nil, err
-	}
-	if cfn != nil {
-		defer cfn()
-	}
-	return d.client.TransactGetItemsWithOptions(input, &dynamodb.TransactGetItemsOutput{}, o)
-}
-
-func (d *Dax) TransactGetItemsRequest(input *dynamodb.TransactGetItemsInput) (*request.Request, *dynamodb.TransactGetItemsOutput) {
-	op := &request.Operation{Name: client.OpTransactGetItems}
-	if input == nil {
-		input = &dynamodb.TransactGetItemsInput{}
-	}
-	output := &dynamodb.TransactGetItemsOutput{}
-	opt := client.RequestOptions{Context: aws.BackgroundContext()}
-	req := d.client.NewDaxRequest(op, input, output, opt)
-	return req, output
-}
-
-func (d *Dax) BatchGetItemPages(input *dynamodb.BatchGetItemInput, fn func(*dynamodb.BatchGetItemOutput, bool) bool) error {
-	return d.BatchGetItemPagesWithContext(aws.BackgroundContext(), input, fn)
-}
-
-func (d *Dax) BatchGetItemPagesWithContext(ctx context.Context, input *dynamodb.BatchGetItemInput, fn func(*dynamodb.BatchGetItemOutput, bool) bool, opts ...request.Option) error {
-	p := request.Pagination{
-		NewRequest: func() (*request.Request, error) {
-			var inCpy *dynamodb.BatchGetItemInput
-			if input != nil {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := d.BatchGetItemRequest(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
+	sel := string(params.Select)
+	input := &dynamov1.QueryInput{
+	//AttributesToGet:           toGet,
+		ConditionalOperator:       &co,
+		ConsistentRead:            params.ConsistentRead,
+		ExclusiveStartKey:         internal.ConvertAttributeValueV2toV1Map(params.ExclusiveStartKey),
+		ExpressionAttributeNames:  internal.ConvertToPointerMap(params.ExpressionAttributeNames),
+		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(params.ExpressionAttributeValues),
+		FilterExpression:          params.FilterExpression,
+		IndexName:                 params.IndexName,
+		KeyConditionExpression:    params.KeyConditionExpression,
+		KeyConditions:             internal.ConvertConditionMap(params.KeyConditions),
+		Limit:                     limit,
+		ProjectionExpression:      params.ProjectionExpression,
+		QueryFilter:               internal.ConvertConditionMap(params.QueryFilter),
+		ReturnConsumedCapacity:    (*string)(&params.ReturnConsumedCapacity),
+		ScanIndexForward:          params.ScanIndexForward,
+		Select:                    &sel,
+		TableName:                 params.TableName,
 	}
 
-	for p.Next() {
-		if !fn(p.Page().(*dynamodb.BatchGetItemOutput), !p.HasNextPage()) {
-			break
+	if params.AttributesToGet != nil {
+		toGet := make([]*string, 0)
+
+		for _, s := range params.AttributesToGet {
+			toGet = append(toGet, &s)
 		}
+
+		input.AttributesToGet = toGet
 	}
 
-	return p.Err()
+	output, err := d.client.QueryWithOptions(input, &dynamov1.QueryOutput{}, o)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var count int32
+	if output.Count != nil {
+		count = int32(*output.Count)
+	}
+	items := make([]map[string]types.AttributeValue, 0)
+	for _, item := range output.Items {
+		items = append(items, internal.ConvertAttributeValueV1toV2Map(item))
+	}
+	sc := int32(*output.ScannedCount)
+	out := &dynamodb.QueryOutput{
+		Count: count,
+		Items: items,
+		LastEvaluatedKey: internal.ConvertAttributeValueV1toV2Map(output.LastEvaluatedKey),
+		ScannedCount: sc,
+		//ResultMetadata:
+	}
+	if output.ConsumedCapacity != nil {
+		out.ConsumedCapacity = internal.ConvertConsumedCapacity(output.ConsumedCapacity)
+	}
+
+	return out, nil
 }
 
-func (d *Dax) QueryPages(input *dynamodb.QueryInput, fn func(*dynamodb.QueryOutput, bool) bool) error {
-	return d.QueryPagesWithContext(aws.BackgroundContext(), input, fn)
+func (d *Dax) BatchWriteItem(ctx context.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (*dynamodb.BatchWriteItemOutput, error) {
+	return nil, d.unImpl()
 }
 
-func (d *Dax) QueryPagesWithContext(ctx context.Context, input *dynamodb.QueryInput, fn func(*dynamodb.QueryOutput, bool) bool, opts ...request.Option) error {
-	p := request.Pagination{
-		NewRequest: func() (*request.Request, error) {
-			var inCpy *dynamodb.QueryInput
-			if input != nil {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := d.QueryRequest(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
-	}
-	for p.Next() {
-		if !fn(p.Page().(*dynamodb.QueryOutput), !p.HasNextPage()) {
-			break
-		}
-	}
-	return p.Err()
+func (d *Dax) BatchGetItem(ctx context.Context, input *dynamodb.BatchGetItemInput, opts ...request.Option) (*dynamodb.BatchGetItemOutput, error) {
+	return nil, d.unImpl()
 }
 
-func (d *Dax) ScanPages(input *dynamodb.ScanInput, fn func(*dynamodb.ScanOutput, bool) bool) error {
-	return d.ScanPagesWithContext(aws.BackgroundContext(), input, fn)
+func (d *Dax) TransactWriteItems(ctx context.Context, input *dynamodb.TransactWriteItemsInput, opts ...request.Option) (*dynamodb.TransactWriteItemsOutput, error) {
+	return nil, d.unImpl()
 }
 
-func (d *Dax) ScanPagesWithContext(ctx context.Context, input *dynamodb.ScanInput, fn func(*dynamodb.ScanOutput, bool) bool, opts ...request.Option) error {
-	p := request.Pagination{
-		NewRequest: func() (*request.Request, error) {
-			var inCpy *dynamodb.ScanInput
-			if input != nil {
-				tmp := *input
-				inCpy = &tmp
-			}
-			req, _ := d.ScanRequest(inCpy)
-			req.SetContext(ctx)
-			req.ApplyOptions(opts...)
-			return req, nil
-		},
-	}
-	for p.Next() {
-		if !fn(p.Page().(*dynamodb.ScanOutput), !p.HasNextPage()) {
-			break
-		}
-	}
-	return p.Err()
+func (d *Dax) TransactGetItems(ctx context.Context, input *dynamodb.TransactGetItemsInput, opts ...request.Option) (*dynamodb.TransactGetItemsOutput, error) {
+	return nil, d.unImpl()
 }
 
 func (d *Dax) CreateBackup(*dynamodb.CreateBackupInput) (*dynamodb.CreateBackupOutput, error) {
