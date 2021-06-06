@@ -152,12 +152,14 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 	out := &dynamodb.QueryOutput{
 		Count: count,
 		Items: items,
-		LastEvaluatedKey: internal.ConvertAttributeValueV1toV2Map(output.LastEvaluatedKey),
 		ScannedCount: sc,
 		//ResultMetadata:
 	}
 	if output.ConsumedCapacity != nil {
 		out.ConsumedCapacity = internal.ConvertConsumedCapacity(output.ConsumedCapacity)
+	}
+	if output.LastEvaluatedKey != nil {
+		out.LastEvaluatedKey = internal.ConvertAttributeValueV1toV2Map(output.LastEvaluatedKey)
 	}
 
 	return out, nil
