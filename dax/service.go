@@ -17,11 +17,16 @@ package dax
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"net"
+	"net/url"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
 	"github.com/aws/aws-dax-go/dax/internal/client"
+	"github.com/aws/aws-dax-go/dax/internal/proxy"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client/metadata"
 	"github.com/aws/aws-sdk-go/aws/request"
@@ -85,6 +90,23 @@ func New(cfg Config) (*Dax, error) {
 	return &Dax{client: c, config: cfg}, nil
 }
 
+// SecureDialContext creates a secure DialContext for connecting to encrypted cluster
+func SecureDialContext(endpoint string, skipHostnameVerification bool) (func(ctx context.Context, network string, address string) (net.Conn, error), error) {
+	dialer := &proxy.Dialer{}
+	var cfg tls.Config
+	if skipHostnameVerification {
+		cfg = tls.Config{InsecureSkipVerify: true}
+	} else {
+		u, err := url.ParseRequestURI(endpoint)
+		if err != nil {
+			return nil, err
+		}
+		cfg = tls.Config{ServerName: u.Hostname()}
+	}
+	dialer.Config = &cfg
+	return dialer.DialContext, nil
+}
+
 // NewWithSession creates a new instance of the DAX client with a session.
 //
 // Only configurations relevent to DAX will be used, others will be ignored.
@@ -93,7 +115,7 @@ func New(cfg Config) (*Dax, error) {
 // 		mySession := session.Must(session.NewSession(
 // 			&aws.Config{
 // 				Region: aws.String("us-east-1"),
-// 				Endpoint: aws.String("mycluster.frfx8h.clustercfg.dax.usw2.amazonaws.com:8111"),
+// 				Endpoint: aws.String("dax://mycluster.frfx8h.clustercfg.dax.usw2.amazonaws.com:8111"),
 // 			}))
 //
 // 		// Create a DAX client from just a session.
