@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-dax-go/dax/internal"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"io"
+	"log"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -60,6 +61,8 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 	if err != nil {
 		return nil, err
 	}
+	
+	log.Print(output)
 
 	out := &dynamodb.PutItemOutput{
 		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
