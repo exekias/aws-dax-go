@@ -21,7 +21,6 @@ import (
 	"github.com/aws/aws-dax-go/dax/internal"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"io"
-	"log"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
