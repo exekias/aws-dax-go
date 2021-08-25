@@ -62,7 +62,9 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 		return nil, err
 	}
 	
-	log.Print(output)
+	if (output.Attributes == nil && output.ItemCollectionMetrics == nil) {
+		return nil, err
+	}
 
 	out := &dynamodb.PutItemOutput{
 		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
