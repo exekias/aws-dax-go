@@ -81,8 +81,42 @@ func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, o
 	return nil, d.unImpl()
 }
 
-func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, opts ...request.Option) (*dynamodb.UpdateItemOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	inputV1 := &dynamov1.UpdateItemInput{
+		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
+		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		TableName:                 input.TableName,
+		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
+	}
+
+	output, err := d.client.UpdateItemWithOptions(inputV1, &dynamov1.UpdateItemOutput{}, o)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if output.Attributes == nil && output.ItemCollectionMetrics == nil {
+		return nil, err
+	}
+
+	outputV2 := &dynamodb.UpdateItemOutput{
+		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
+		ItemCollectionMetrics: internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics),
+	}
+
+	if output.ConsumedCapacity != nil {
+		outputV2.ConsumedCapacity = internal.ConvertConsumedCapacity(output.ConsumedCapacity)
+	}
+	return outputV2, nil
 }
 
 func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
