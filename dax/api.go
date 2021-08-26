@@ -77,8 +77,37 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 	return out, nil
 }
 
-func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...request.Option) (*dynamodb.DeleteItemOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	inputV1 := &dynamov1.DeleteItemInput{
+		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
+		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		TableName:                 input.TableName,
+		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
+	}
+	output, err := d.client.DeleteItemWithOptions(inputV1, &dynamov1.DeleteItemOutput{}, o)
+
+	if err != nil {
+		return nil, err
+	}
+
+	outputV2 := &dynamodb.DeleteItemOutput{
+		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
+		ItemCollectionMetrics: internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics),
+	}
+
+	if output.ConsumedCapacity != nil {
+		outputV2.ConsumedCapacity = internal.ConvertConsumedCapacity(output.ConsumedCapacity)
+	}
+	return outputV2, nil
 }
 
 func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
