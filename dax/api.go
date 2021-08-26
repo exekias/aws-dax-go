@@ -159,7 +159,7 @@ func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ..
 
 	oldInput := &dynamov1.GetItemInput{
 		ExpressionAttributeNames: internal.ConvertToPointerMap(input.ExpressionAttributeNames),
-		AttributesToGet:          internal.ConvertToPointerSlice(input.AttributesToGet),
+		ProjectionExpression:     input.ProjectionExpression,
 		TableName:                input.TableName,
 		Key:                      internal.ConvertAttributeValueV2toV1Map(input.Key),
 	}
