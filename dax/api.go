@@ -18,9 +18,10 @@ package dax
 import (
 	"context"
 	"errors"
+	"io"
+
 	"github.com/aws/aws-dax-go/dax/internal"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"io"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -60,8 +61,8 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 	if err != nil {
 		return nil, err
 	}
-	
-	if (output.Attributes == nil && output.ItemCollectionMetrics == nil) {
+
+	if output.Attributes == nil && output.ItemCollectionMetrics == nil {
 		return nil, err
 	}
 
@@ -84,12 +85,66 @@ func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, o
 	return nil, d.unImpl()
 }
 
-func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...request.Option) (*dynamodb.GetItemOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(true, ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	oldInput := &dynamov1.GetItemInput{
+		ExpressionAttributeNames: internal.ConvertToPointerMap(input.ExpressionAttributeNames),
+		AttributesToGet:          internal.ConvertToPointerSlice(input.AttributesToGet),
+		TableName:                input.TableName,
+		Key:                      internal.ConvertAttributeValueV2toV1Map(input.Key),
+	}
+
+	itemOutput, err := d.client.GetItemWithOptions(oldInput, &dynamov1.GetItemOutput{}, o)
+
+	v2Output := &dynamodb.GetItemOutput{
+		Item: internal.ConvertAttributeValueV1toV2Map(itemOutput.Item),
+	}
+
+	return v2Output, err
+
 }
 
-func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...request.Option) (*dynamodb.ScanOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...func(*dynamodb.Options)) (*dynamodb.ScanOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(true, ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	limit := int64(*input.Limit)
+
+	scanInputV1 := &dynamov1.ScanInput{
+		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
+		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		FilterExpression:          input.FilterExpression,
+		IndexName:                 input.IndexName,
+		TableName:                 input.TableName,
+		ProjectionExpression:      input.ProjectionExpression,
+		Limit:                     &limit,
+	}
+
+	scanOutput, err := d.client.ScanWithOptions(scanInputV1, &dynamov1.ScanOutput{}, o)
+
+	if err != nil {
+		return nil, err
+	}
+
+	scanOutputV2 := &dynamodb.ScanOutput{
+		Items:        internal.ConvertAttributeValueV1toV2MapList(scanOutput.Items),
+		Count:        int32(*scanOutput.Count),
+		ScannedCount: int32(*scanOutput.ScannedCount),
+	}
+
+	return scanOutputV2, err
 }
 
 func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...func(*dynamodb.Options)) (*dynamodb.QueryOutput, error) {
@@ -109,7 +164,7 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 	}
 	sel := string(params.Select)
 	input := &dynamov1.QueryInput{
-	//AttributesToGet:           toGet,
+		//AttributesToGet:           toGet,
 		ConditionalOperator:       &co,
 		ConsistentRead:            params.ConsistentRead,
 		ExclusiveStartKey:         internal.ConvertAttributeValueV2toV1Map(params.ExclusiveStartKey),
@@ -154,8 +209,8 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 	}
 	sc := int32(*output.ScannedCount)
 	out := &dynamodb.QueryOutput{
-		Count: count,
-		Items: items,
+		Count:        count,
+		Items:        items,
 		ScannedCount: sc,
 		//ResultMetadata:
 	}

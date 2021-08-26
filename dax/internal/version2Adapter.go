@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	dynamov1 "github.com/aws/aws-sdk-go/service/dynamodb"
 )
@@ -24,7 +25,7 @@ func ConvertItemCollectionMetrics(metrics dynamov1.ItemCollectionMetrics) *types
 		size = append(size, *ser)
 	}
 	return &types.ItemCollectionMetrics{
-		ItemCollectionKey: ConvertAttributeValueV1toV2Map(metrics.ItemCollectionKey),
+		ItemCollectionKey:   ConvertAttributeValueV1toV2Map(metrics.ItemCollectionKey),
 		SizeEstimateRangeGB: size,
 	}
 }
@@ -67,7 +68,17 @@ func ConvertConsumedCapacity(capacity *dynamov1.ConsumedCapacity) *types.Consume
 func ConvertToPointerMap(input map[string]string) map[string]*string {
 	output := make(map[string]*string)
 	for key, val := range input {
-		output[key] = &val
+		v := val
+		output[key] = &v
+	}
+	return output
+}
+
+func ConvertToPointerSlice(input []string) []*string {
+	output := make([]*string, 0)
+	for _, val := range input {
+		v := val
+		output = append(output, &v)
 	}
 	return output
 }
@@ -146,7 +157,8 @@ func ConvertAttributeValueV2toV1(value types.AttributeValue) *dynamov1.Attribute
 	case *types.AttributeValueMemberNS:
 		v1 := make([]*string, 0)
 		for _, val := range v.Value {
-			v1 = append(v1, &val)
+			v := val
+			v1 = append(v1, &v)
 		}
 		val.NS = v1
 
@@ -159,7 +171,8 @@ func ConvertAttributeValueV2toV1(value types.AttributeValue) *dynamov1.Attribute
 	case *types.AttributeValueMemberSS:
 		v1 := make([]*string, 0)
 		for _, val := range v.Value {
-			v1 = append(v1, &val)
+			v := val
+			v1 = append(v1, &v)
 		}
 		val.NS = v1
 
@@ -176,6 +189,14 @@ func ConvertAttributeValueV1toV2Map(values map[string]*dynamov1.AttributeValue) 
 	output := make(map[string]types.AttributeValue)
 	for key, value := range values {
 		output[key] = ConvertAttributeValueV1toV2(value)
+	}
+	return output
+}
+
+func ConvertAttributeValueV1toV2MapList(values []map[string]*dynamov1.AttributeValue) []map[string]types.AttributeValue {
+	output := make([]map[string]types.AttributeValue, 0)
+	for _, av := range values {
+		output = append(output, ConvertAttributeValueV1toV2Map(av))
 	}
 	return output
 }
