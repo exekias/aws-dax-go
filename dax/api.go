@@ -22,6 +22,7 @@ import (
 
 	"github.com/aws/aws-dax-go/dax/internal"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	"github.com/aws/smithy-go/middleware"
 
 	"github.com/aws/aws-dax-go/dax/internal/client"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -295,8 +296,102 @@ func (d *Dax) BatchGetItem(ctx context.Context, input *dynamodb.BatchGetItemInpu
 	return nil, d.unImpl()
 }
 
-func (d *Dax) TransactWriteItems(ctx context.Context, input *dynamodb.TransactWriteItemsInput, opts ...request.Option) (*dynamodb.TransactWriteItemsOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) TransactWriteItems(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	var items []*dynamov1.TransactWriteItem
+	for _, item := range params.TransactItems {
+		out := &dynamov1.TransactWriteItem{}
+
+		if item.ConditionCheck != nil {
+			out.ConditionCheck = &dynamov1.ConditionCheck{
+				ConditionExpression:                 item.ConditionCheck.ConditionExpression,
+				ExpressionAttributeNames:            internal.ConvertToPointerMap(item.ConditionCheck.ExpressionAttributeNames),
+				ExpressionAttributeValues:           internal.ConvertAttributeValueV2toV1Map(item.ConditionCheck.ExpressionAttributeValues),
+				Key:                                 internal.ConvertAttributeValueV2toV1Map(item.ConditionCheck.Key),
+				ReturnValuesOnConditionCheckFailure: (*string)(&item.ConditionCheck.ReturnValuesOnConditionCheckFailure),
+				TableName:                           item.ConditionCheck.TableName,
+			}
+		}
+
+		if item.Delete != nil {
+			out.Delete = &dynamov1.Delete{
+				ConditionExpression:                 item.Delete.ConditionExpression,
+				ExpressionAttributeNames:            internal.ConvertToPointerMap(item.Delete.ExpressionAttributeNames),
+				ExpressionAttributeValues:           internal.ConvertAttributeValueV2toV1Map(item.Delete.ExpressionAttributeValues),
+				Key:                                 internal.ConvertAttributeValueV2toV1Map(item.Delete.Key),
+				ReturnValuesOnConditionCheckFailure: (*string)(&item.Delete.ReturnValuesOnConditionCheckFailure),
+				TableName:                           item.Delete.TableName,
+			}
+		}
+
+		if item.Put != nil {
+			out.Put = &dynamov1.Put{
+				ConditionExpression:                 item.Put.ConditionExpression,
+				ExpressionAttributeNames:            internal.ConvertToPointerMap(item.Put.ExpressionAttributeNames),
+				ExpressionAttributeValues:           internal.ConvertAttributeValueV2toV1Map(item.Put.ExpressionAttributeValues),
+				Item:                                internal.ConvertAttributeValueV2toV1Map(item.Put.Item),
+				ReturnValuesOnConditionCheckFailure: (*string)(&item.Put.ReturnValuesOnConditionCheckFailure),
+				TableName:                           item.Put.TableName,
+			}
+		}
+
+		if item.Update != nil {
+			out.Update = &dynamov1.Update{
+				ConditionExpression:                 item.Update.ConditionExpression,
+				ExpressionAttributeNames:            internal.ConvertToPointerMap(item.Update.ExpressionAttributeNames),
+				ExpressionAttributeValues:           internal.ConvertAttributeValueV2toV1Map(item.Update.ExpressionAttributeValues),
+				Key:                                 internal.ConvertAttributeValueV2toV1Map(item.Update.Key),
+				ReturnValuesOnConditionCheckFailure: (*string)(&item.Update.ReturnValuesOnConditionCheckFailure),
+				TableName:                           item.Update.TableName,
+				UpdateExpression:                    item.Update.UpdateExpression,
+			}
+		}
+
+		items = append(items, out)
+	}
+
+	input := &dynamov1.TransactWriteItemsInput{
+		TransactItems: items,
+	}
+
+	output, err := d.client.TransactWriteItemsWithOptions(input, &dynamov1.TransactWriteItemsOutput{}, o)
+	if err != nil {
+		return nil, err
+	}
+
+	out := &dynamodb.TransactWriteItemsOutput{
+		ResultMetadata: middleware.Metadata{},
+	}
+
+	if len(output.ConsumedCapacity) > 0 {
+		consumeCapacity := make([]types.ConsumedCapacity, len(output.ConsumedCapacity))
+		for i, cap := range output.ConsumedCapacity {
+			consumeCapacity[i] = *internal.ConvertConsumedCapacity(cap)
+		}
+		out.ConsumedCapacity = consumeCapacity
+	}
+
+	if len(output.ItemCollectionMetrics) > 0 {
+		itemCollectionMetrics := make(map[string][]types.ItemCollectionMetrics, len(output.ConsumedCapacity))
+		for name, items := range output.ItemCollectionMetrics {
+			res := []types.ItemCollectionMetrics{}
+			for _, item := range items {
+				res = append(res, *internal.ConvertItemCollectionMetrics(*item))
+			}
+			itemCollectionMetrics[name] = res
+		}
+		out.ItemCollectionMetrics = itemCollectionMetrics
+	}
+
+	return out, nil
+
 }
 
 func (d *Dax) TransactGetItems(ctx context.Context, input *dynamodb.TransactGetItemsInput, opts ...request.Option) (*dynamodb.TransactGetItemsOutput, error) {
