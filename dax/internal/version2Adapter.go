@@ -215,7 +215,7 @@ func ConvertAttributeValueV1toV2(value *dynamov1.AttributeValue) types.Attribute
 		}
 		return &types.AttributeValueMemberL{Value: v}
 	}
-	if len(value.M) > 0 {
+	if value.M != nil {
 		v := make(map[string]types.AttributeValue)
 		for key, val := range value.M {
 			v[key] = ConvertAttributeValueV1toV2(val)
