@@ -160,6 +160,7 @@ func (d *Dax) GetItem(ctx context.Context, input *dynamodb.GetItemInput, opts ..
 
 	oldInput := &dynamov1.GetItemInput{
 		ExpressionAttributeNames: internal.ConvertToPointerMap(input.ExpressionAttributeNames),
+		ConsistentRead:           input.ConsistentRead,
 		ProjectionExpression:     input.ProjectionExpression,
 		TableName:                input.TableName,
 		Key:                      internal.ConvertAttributeValueV2toV1Map(input.Key),
@@ -189,6 +190,7 @@ func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...func(
 	scanInputV1 := &dynamov1.ScanInput{
 		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
 		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		ConsistentRead:            input.ConsistentRead,
 		FilterExpression:          input.FilterExpression,
 		IndexName:                 input.IndexName,
 		TableName:                 input.TableName,
