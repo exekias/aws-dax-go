@@ -363,7 +363,7 @@ func (d *Dax) TransactWriteItems(ctx context.Context, params *dynamodb.TransactW
 
 	output, err := d.client.TransactWriteItemsWithOptions(input, &dynamov1.TransactWriteItemsOutput{}, o)
 	if err != nil {
-		return nil, err
+		return nil, internal.ConvertError(err)
 	}
 
 	out := &dynamodb.TransactWriteItemsOutput{

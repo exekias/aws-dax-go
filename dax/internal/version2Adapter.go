@@ -65,6 +65,27 @@ func ConvertConsumedCapacity(capacity *dynamov1.ConsumedCapacity) *types.Consume
 	}
 }
 
+func ConvertError(err error) error {
+	if tcerr, ok := err.(*dynamov1.TransactionCanceledException); ok {
+		reasons := []types.CancellationReason{}
+
+		for _, reason := range tcerr.CancellationReasons {
+			reasons = append(reasons, types.CancellationReason{
+				Code:    reason.Code,
+				Item:    ConvertAttributeValueV1toV2Map(reason.Item),
+				Message: reason.Message,
+			})
+		}
+
+		return &types.TransactionCanceledException{
+			Message:             tcerr.Message_,
+			CancellationReasons: reasons,
+		}
+	}
+
+	return err
+}
+
 func ConvertToPointerMap(input map[string]string) map[string]*string {
 	output := make(map[string]*string)
 	for key, val := range input {
