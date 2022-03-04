@@ -290,8 +290,101 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 	return out, nil
 }
 
-func (d *Dax) BatchWriteItem(ctx context.Context, input *dynamodb.BatchWriteItemInput, opts ...request.Option) (*dynamodb.BatchWriteItemOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	var reqItems map[string][]*dynamov1.WriteRequest
+	for table, items := range params.RequestItems {
+		var newItems []*dynamov1.WriteRequest
+		for _, item := range items {
+			req := &dynamov1.WriteRequest{}
+
+			if item.DeleteRequest != nil {
+				req.DeleteRequest = &dynamov1.DeleteRequest{
+					Key: internal.ConvertAttributeValueV2toV1Map(item.DeleteRequest.Key),
+				}
+			}
+
+			if item.PutRequest != nil {
+				req.PutRequest = &dynamov1.PutRequest{
+					Item: internal.ConvertAttributeValueV2toV1Map(item.PutRequest.Item),
+				}
+			}
+
+			newItems = append(newItems, req)
+		}
+
+		reqItems[table] = newItems
+	}
+
+	input := &dynamov1.BatchWriteItemInput{
+		RequestItems:                reqItems,
+		ReturnConsumedCapacity:      (*string)(&params.ReturnConsumedCapacity),
+		ReturnItemCollectionMetrics: (*string)(&params.ReturnItemCollectionMetrics),
+	}
+
+	output, err := d.client.BatchWriteItemWithOptions(input, &dynamov1.BatchWriteItemOutput{}, o)
+	if err != nil {
+		return nil, internal.ConvertError(err)
+	}
+
+	out := &dynamodb.BatchWriteItemOutput{}
+
+	if len(output.ConsumedCapacity) > 0 {
+		consumeCapacity := make([]types.ConsumedCapacity, len(output.ConsumedCapacity))
+		for i, cap := range output.ConsumedCapacity {
+			consumeCapacity[i] = *internal.ConvertConsumedCapacity(cap)
+		}
+		out.ConsumedCapacity = consumeCapacity
+	}
+
+	if len(output.ItemCollectionMetrics) > 0 {
+		itemCollectionMetrics := make(map[string][]types.ItemCollectionMetrics, len(output.ConsumedCapacity))
+		for name, items := range output.ItemCollectionMetrics {
+			res := []types.ItemCollectionMetrics{}
+			for _, item := range items {
+				res = append(res, *internal.ConvertItemCollectionMetrics(*item))
+			}
+			itemCollectionMetrics[name] = res
+		}
+		out.ItemCollectionMetrics = itemCollectionMetrics
+	}
+
+	if len(output.UnprocessedItems) > 0 {
+		var respItems map[string][]types.WriteRequest
+		for table, items := range output.UnprocessedItems {
+			var newItems []types.WriteRequest
+			for _, item := range items {
+				req := types.WriteRequest{}
+
+				if item.DeleteRequest != nil {
+					req.DeleteRequest = &types.DeleteRequest{
+						Key: internal.ConvertAttributeValueV1toV2Map(item.DeleteRequest.Key),
+					}
+				}
+
+				if item.PutRequest != nil {
+					req.PutRequest = &types.PutRequest{
+						Item: internal.ConvertAttributeValueV1toV2Map(item.PutRequest.Item),
+					}
+				}
+
+				newItems = append(newItems, req)
+			}
+
+			respItems[table] = newItems
+		}
+
+		out.UnprocessedItems = respItems
+	}
+
+	return out, nil
 }
 
 func (d *Dax) BatchGetItem(ctx context.Context, input *dynamodb.BatchGetItemInput, opts ...request.Option) (*dynamodb.BatchGetItemOutput, error) {
