@@ -102,7 +102,10 @@ func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, o
 
 	outputV2 := &dynamodb.DeleteItemOutput{
 		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
-		ItemCollectionMetrics: internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics),
+	}
+	
+	if output.ItemCollectionMetrics != nil {
+		outputV2.ItemCollectionMetrics = internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics)
 	}
 
 	if output.ConsumedCapacity != nil {
