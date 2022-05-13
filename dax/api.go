@@ -188,9 +188,10 @@ func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...func(
 		defer cfn()
 	}
 
-	var limit int64
+	var limit *int64
 	if input.Limit != nil {
-		limit = int64(*input.Limit)
+		l := int64(*input.Limit)
+		limit = &l
 	}
 
 	scanInputV1 := &dynamov1.ScanInput{
@@ -201,7 +202,7 @@ func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...func(
 		IndexName:                 input.IndexName,
 		TableName:                 input.TableName,
 		ProjectionExpression:      input.ProjectionExpression,
-		Limit:                     &limit,
+		Limit:                     limit,
 	}
 
 	scanOutput, err := d.client.ScanWithOptions(scanInputV1, &dynamov1.ScanOutput{}, o)
