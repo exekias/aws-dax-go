@@ -188,7 +188,10 @@ func (d *Dax) Scan(ctx context.Context, input *dynamodb.ScanInput, opts ...func(
 		defer cfn()
 	}
 
-	limit := int64(*input.Limit)
+	var limit int64
+	if input.Limit != nil {
+		limit = int64(*input.Limit)
+	}
 
 	scanInputV1 := &dynamov1.ScanInput{
 		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
