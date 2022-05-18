@@ -444,6 +444,7 @@ func (d *Dax) BatchGetItem(ctx context.Context, params *dynamodb.BatchGetItemInp
 		}
 		responses[name] = res
 	}
+	out.Responses = responses
 
 	return out, nil
 }
