@@ -394,8 +394,58 @@ func (d *Dax) BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteIte
 	return out, nil
 }
 
-func (d *Dax) BatchGetItem(ctx context.Context, input *dynamodb.BatchGetItemInput, opts ...request.Option) (*dynamodb.BatchGetItemOutput, error) {
-	return nil, d.unImpl()
+func (d *Dax) BatchGetItem(ctx context.Context, params *dynamodb.BatchGetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchGetItemOutput, error) {
+	o, cfn, err := d.config.requestOptionsV2(false, ctx, optFns...)
+	if err != nil {
+		return nil, err
+	}
+	if cfn != nil {
+		defer cfn()
+	}
+
+	requestItems := make(map[string]*dynamov1.KeysAndAttributes, len(params.RequestItems))
+	for name, keysAndAttrs := range params.RequestItems {
+		keys := make([]map[string]*dynamov1.AttributeValue, len(keysAndAttrs.Keys))
+		for i, item := range keysAndAttrs.Keys {
+			keys[i] = internal.ConvertAttributeValueV2toV1Map(item)
+		}
+
+		requestItems[name] = &dynamov1.KeysAndAttributes{
+			ConsistentRead:           keysAndAttrs.ConsistentRead,
+			ExpressionAttributeNames: internal.ConvertToPointerMap(keysAndAttrs.ExpressionAttributeNames),
+			Keys:                     keys,
+			ProjectionExpression:     keysAndAttrs.ProjectionExpression,
+		}
+	}
+
+	input := &dynamov1.BatchGetItemInput{
+		RequestItems: requestItems,
+	}
+
+	output, err := d.client.BatchGetItemWithOptions(input, &dynamov1.BatchGetItemOutput{}, o)
+	if err != nil {
+		return nil, internal.ConvertError(err)
+	}
+
+	out := &dynamodb.BatchGetItemOutput{}
+	if len(output.ConsumedCapacity) > 0 {
+		consumeCapacity := make([]types.ConsumedCapacity, len(output.ConsumedCapacity))
+		for i, cap := range output.ConsumedCapacity {
+			consumeCapacity[i] = *internal.ConvertConsumedCapacity(cap)
+		}
+		out.ConsumedCapacity = consumeCapacity
+	}
+
+	responses := make(map[string][]map[string]types.AttributeValue, len(output.Responses))
+	for name, items := range output.Responses {
+		res := make([]map[string]types.AttributeValue, len(items))
+		for i, item := range items {
+			res[i] = internal.ConvertAttributeValueV1toV2Map(item)
+		}
+		responses[name] = res
+	}
+
+	return out, nil
 }
 
 func (d *Dax) TransactWriteItems(ctx context.Context, params *dynamodb.TransactWriteItemsInput, optFns ...func(*dynamodb.Options)) (*dynamodb.TransactWriteItemsOutput, error) {
