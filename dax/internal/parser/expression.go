@@ -22,12 +22,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/aws/aws-dax-go/dax/internal/cbor"
 	"github.com/aws/aws-dax-go/dax/internal/parser/generated"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/urso/antlr4/runtime/Go/antlr"
 )
 
 const (
@@ -339,7 +339,7 @@ func (e *ExpressionEncoder) ExitIn(ctx *generated.InContext) {
 		args[n] = e.pop()
 	}
 	a := e.pop()
-	e.push(e.encodeFunction(opIn, []sexpr{a, sexpr{expr: args}}))
+	e.push(e.encodeFunction(opIn, []sexpr{a, {expr: args}}))
 }
 
 func (e *ExpressionEncoder) EnterBetween(ctx *generated.BetweenContext) {
@@ -623,13 +623,13 @@ type sexpr struct {
 type stringSet map[string]struct{}
 
 func (s stringSet) addKeysStrVal(m map[string]*string) {
-	for k, _ := range m {
+	for k := range m {
 		s[k] = struct{}{}
 	}
 }
 
 func (s stringSet) addKeysAttrVal(m map[string]*dynamodb.AttributeValue) {
-	for k, _ := range m {
+	for k := range m {
 		s[k] = struct{}{}
 	}
 }
@@ -641,7 +641,7 @@ func (s stringSet) remove(v string) {
 func (s stringSet) String() string {
 	out := ""
 	first := true
-	for k, _ := range s {
+	for k := range s {
 		if first {
 			first = false
 		} else {
