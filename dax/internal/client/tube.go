@@ -24,8 +24,10 @@ import (
 	"github.com/aws/aws-dax-go/dax/internal/cbor"
 )
 
-const magic = "J7yne5G"
-const agent = "DaxGoClient-1.2.8"
+const (
+	magic = "J7yne5G"
+	agent = "DaxGoClient-1.2.9"
+)
 
 var optional = map[string]string{"UserAgent": agent}
 
@@ -98,7 +100,6 @@ func newTube(c net.Conn, s session) (tube, error) {
 		cborReader: cbor.NewReader(bufio.NewReader(c)),
 		cborWriter: w,
 	}, nil
-
 }
 
 func (t *netConnTube) AuthExpiryUnix() int64 {
