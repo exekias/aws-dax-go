@@ -235,7 +235,6 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 		i := int64(*params.Limit)
 		limit = &i
 	}
-	sel := string(params.Select)
 	input := &dynamov1.QueryInput{
 		//AttributesToGet:           toGet,
 		ConditionalOperator:       &co,
@@ -252,7 +251,6 @@ func (d *Dax) Query(ctx context.Context, params *dynamodb.QueryInput, optFns ...
 		QueryFilter:               internal.ConvertConditionMap(params.QueryFilter),
 		ReturnConsumedCapacity:    (*string)(&params.ReturnConsumedCapacity),
 		ScanIndexForward:          params.ScanIndexForward,
-		Select:                    &sel,
 		TableName:                 params.TableName,
 	}
 
