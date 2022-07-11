@@ -60,7 +60,7 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 	output, err := d.client.PutItemWithOptions(input, &dynamov1.PutItemOutput{}, o)
 
 	if err != nil {
-		return nil, err
+		return nil, internal.ConvertError(err)
 	}
 
 	if output.Attributes == nil && output.ItemCollectionMetrics == nil {
@@ -97,13 +97,13 @@ func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, o
 	output, err := d.client.DeleteItemWithOptions(inputV1, &dynamov1.DeleteItemOutput{}, o)
 
 	if err != nil {
-		return nil, err
+		return nil, internal.ConvertError(err)
 	}
 
 	outputV2 := &dynamodb.DeleteItemOutput{
-		Attributes:            internal.ConvertAttributeValueV1toV2Map(output.Attributes),
+		Attributes: internal.ConvertAttributeValueV1toV2Map(output.Attributes),
 	}
-	
+
 	if output.ItemCollectionMetrics != nil {
 		outputV2.ItemCollectionMetrics = internal.ConvertItemCollectionMetrics(*output.ItemCollectionMetrics)
 	}

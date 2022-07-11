@@ -66,7 +66,10 @@ func ConvertConsumedCapacity(capacity *dynamov1.ConsumedCapacity) *types.Consume
 }
 
 func ConvertError(err error) error {
-	if tcerr, ok := err.(*dynamov1.TransactionCanceledException); ok {
+	switch tcerr := err.(type) {
+	case (*dynamov1.ConditionalCheckFailedException):
+		return &types.ConditionalCheckFailedException{Message: tcerr.Message_}
+	case (*dynamov1.TransactionCanceledException):
 		reasons := []types.CancellationReason{}
 
 		for _, reason := range tcerr.CancellationReasons {
