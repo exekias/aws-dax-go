@@ -304,7 +304,7 @@ func (d *Dax) BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteIte
 		defer cfn()
 	}
 
-	var reqItems map[string][]*dynamov1.WriteRequest
+	reqItems := make(map[string][]*dynamov1.WriteRequest, len(params.RequestItems))
 	for table, items := range params.RequestItems {
 		var newItems []*dynamov1.WriteRequest
 		for _, item := range items {
