@@ -8,5 +8,5 @@ require (
 	github.com/aws/smithy-go v1.4.0
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/stretchr/testify v1.5.1
-	github.com/urso/antlr4/runtime/Go/antlr v0.0.0-20220707133017-7c6fad5e483f
+	github.com/urso/antlr4/runtime/Go/antlr v0.0.0-20220720095037-bdf88bff4b62
 )
