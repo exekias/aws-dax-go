@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-dax-go/dax/internal/parser/generated"
-	"github.com/urso/antlr4/runtime/Go/antlr"
+	"github.com/exekias/antlr4/runtime/Go/antlr"
 )
 
 const (

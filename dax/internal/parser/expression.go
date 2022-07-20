@@ -27,7 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/urso/antlr4/runtime/Go/antlr"
+	"github.com/exekias/antlr4/runtime/Go/antlr"
 )
 
 const (

@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/urso/antlr4/runtime/Go/antlr"
+	"github.com/exekias/antlr4/runtime/Go/antlr"
 )
 
 

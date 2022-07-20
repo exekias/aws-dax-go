@@ -2,7 +2,7 @@
 
 package generated // DynamoDbGrammar
 
-import "github.com/urso/antlr4/runtime/Go/antlr"
+import "github.com/exekias/antlr4/runtime/Go/antlr"
 
 // DynamoDbGrammarListener is a complete listener for a parse tree produced by DynamoDbGrammarParser.
 type DynamoDbGrammarListener interface {
