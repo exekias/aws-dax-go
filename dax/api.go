@@ -88,11 +88,13 @@ func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, o
 	}
 
 	inputV1 := &dynamov1.DeleteItemInput{
-		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		ConditionExpression:       input.ConditionExpression,
+		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
 		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
 		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		ReturnValues:              (*string)(&input.ReturnValues),
 		TableName:                 input.TableName,
-		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
 	}
 	output, err := d.client.DeleteItemWithOptions(inputV1, &dynamov1.DeleteItemOutput{}, o)
 
@@ -124,11 +126,15 @@ func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, o
 	}
 
 	inputV1 := &dynamov1.UpdateItemInput{
-		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		AttributeUpdates:          map[string]*dynamov1.AttributeValueUpdate{},
+		ConditionExpression:       input.ConditionExpression,
+		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
 		ExpressionAttributeNames:  internal.ConvertToPointerMap(input.ExpressionAttributeNames),
 		ExpressionAttributeValues: internal.ConvertAttributeValueV2toV1Map(input.ExpressionAttributeValues),
+		Key:                       internal.ConvertAttributeValueV2toV1Map(input.Key),
+		ReturnValues:              (*string)(&input.ReturnValues),
 		TableName:                 input.TableName,
-		Expected:                  internal.ConvertExpectedAttributeValueV2toV1Map(input.Expected),
+		UpdateExpression:          input.UpdateExpression,
 	}
 
 	output, err := d.client.UpdateItemWithOptions(inputV1, &dynamov1.UpdateItemOutput{}, o)
