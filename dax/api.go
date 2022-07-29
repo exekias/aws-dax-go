@@ -58,7 +58,6 @@ func (d *Dax) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns
 	}
 
 	output, err := d.client.PutItemWithOptions(input, &dynamov1.PutItemOutput{}, o)
-
 	if err != nil {
 		return nil, internal.ConvertError(err)
 	}
@@ -97,7 +96,6 @@ func (d *Dax) DeleteItem(ctx context.Context, input *dynamodb.DeleteItemInput, o
 		TableName:                 input.TableName,
 	}
 	output, err := d.client.DeleteItemWithOptions(inputV1, &dynamov1.DeleteItemOutput{}, o)
-
 	if err != nil {
 		return nil, internal.ConvertError(err)
 	}
@@ -138,9 +136,8 @@ func (d *Dax) UpdateItem(ctx context.Context, input *dynamodb.UpdateItemInput, o
 	}
 
 	output, err := d.client.UpdateItemWithOptions(inputV1, &dynamov1.UpdateItemOutput{}, o)
-
 	if err != nil {
-		return nil, err
+		return nil, internal.ConvertError(err)
 	}
 
 	if output.Attributes == nil && output.ItemCollectionMetrics == nil {
